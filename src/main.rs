@@ -1,10 +1,13 @@
 use std::io::Result;
+use std::cmp::max;
 use ratatui::{
-    crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
-    DefaultTerminal, Frame,
-    style::Stylize,
-    text::Line,
-    widgets::{Block, Paragraph},
+    DefaultTerminal, 
+    Frame, 
+    crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers}, 
+    layout::{Constraint, Direction, Layout}, 
+    style::{Stylize, Color},
+    text::{Line, Span, Text, ToSpan},
+    widgets::{Block, BorderType, Paragraph, Widget}
 };
 
 fn main() -> Result<()> {
@@ -14,14 +17,21 @@ fn main() -> Result<()> {
     result
 }
 
-#[derive(Debug, Default)]
 pub struct App {
+    grid: [[char; 40]; 13],
     running: bool,
 }
 
 impl App {
     pub fn new() -> App {
-        return App { running: true };
+        return App { 
+            grid: [[' '; 40]; 13],
+            running: true 
+        };
+    }
+
+    fn quit(&mut self) {
+        self.running = false;
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
@@ -33,20 +43,55 @@ impl App {
         return Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame) {
-        let title = Line::from("Ratatui Simple Template")
-            .bold()
-            .blue()
-            .centered();
-        let text = "Hello, Ratatui!\n\n\
-            Created using https://github.com/ratatui/templates\n\
-            Press `Esc`, `Ctrl-C` or `q` to stop running.";
+    fn render(&self, frame: &mut Frame) {
+        let titlebar = Paragraph::new("test")
+                .block(Block::bordered().border_type(BorderType::Rounded))
+                .centered();
+        let sidebar = self.render_sidebar();
+        let grid = self.render_grid();
+        let vlayout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Fill(1),
+                Constraint::Length(27),
+            ]).split(frame.area());
+        let hlayout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(81),
+                Constraint::Fill(1)
+            ]).split(vlayout[1]);
         frame.render_widget(
-            Paragraph::new(text)
-                .block(Block::bordered().title(title))
-                .centered(),
-            frame.area(),
-        )
+            titlebar,
+            vlayout[0],
+        );
+        frame.render_widget(
+            grid,
+            hlayout[0],
+        );
+        frame.render_widget(
+            sidebar,
+            hlayout[1],
+        );
+    }
+
+    fn render_sidebar(&self) -> impl Widget {
+        return Block::bordered().border_type(BorderType::Rounded);
+    }
+
+    fn render_grid(&self) -> impl Widget {
+        let mut lines: Vec<Line> = vec![];
+        for y in 0..13 {
+            let mut line: Vec<Span> = vec![];
+            for x in 0..40 {
+                line.push(self.grid[y][x].to_span());
+                line.push("│".dark_gray());
+            }
+            lines.push(Line::raw("").spans(line));
+            lines.push(Line::styled("─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─", Color::DarkGray))
+        }
+        let text = Text::from(lines);
+        return Paragraph::new(text).block(Block::bordered());
     }
 
     fn handle_events(&mut self) -> Result<()> {
@@ -65,9 +110,5 @@ impl App {
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
             _ => {}
         }
-    }
-
-    fn quit(&mut self) {
-        self.running = false;
     }
 }
