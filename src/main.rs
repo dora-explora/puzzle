@@ -59,8 +59,15 @@ struct App {
 impl App {
     fn new() -> App {
         let player = Stepper::new(0, 12, Direction::Up);
-        let steppers: Vec<Stepper> = vec![Stepper::new(5, 5, Direction::Left)];
-        let mirrors: Vec<Mirror> = vec![Mirror::new(0, 5, true)];
+        let steppers: Vec<Stepper> = vec![Stepper::new(5, 5, Direction::Left), Stepper::new(3, 11, Direction::Up)];
+        let mirrors: Vec<Mirror> = vec![
+            Mirror::new(0, 5, true),
+            Mirror::new(3, 5, true),
+            Mirror::new(3, 2, false),
+            Mirror::new(0, 2, false),
+            Mirror::new(0, 0, true),
+            Mirror::new(3, 0, false),
+            ];
         return App { 
             player,
             alive: true,
@@ -158,10 +165,10 @@ impl App {
                 for stepper in &self.steppers {
                     if stepper.y == y && stepper.x == x {
                         let arrow = match stepper.d {
-                            Direction::Up => "⬆".to_span().red(),
-                            Direction::Down => "⬇".to_span().red(),
-                            Direction::Left => "⬅".to_span().red(),
-                            Direction::Right => "⮕".to_span().red(),
+                            Direction::Up => '⬆'.to_span().red(),
+                            Direction::Down => '⬇'.to_span().red(),
+                            Direction::Left => '⬅'.to_span().red(),
+                            Direction::Right => '⮕'.to_span().red(),
                         };
                         line.push(arrow);
                         continue 'row;
@@ -170,8 +177,8 @@ impl App {
                 for mirror in &self.mirrors {
                     if mirror.y == y && mirror.x == x {
                         let slash = match mirror.d {
-                            false => "⧹".to_span(),
-                            true => "⧸".to_span(),
+                            false => '\\'.to_span(),
+                            true => '/'.to_span(),
                         };
                         line.push(slash);
                         continue 'row;
@@ -208,17 +215,29 @@ impl App {
 
     fn tick(&mut self) {
         self.player = self.step(&self.player);
+        let mut removals: Vec<usize> = vec![];
         for i in 0..self.steppers.len() {
             if self.steppers[i].x == self.player.x && self.steppers[i].y == self.player.y {
                 self.alive = false;
-                self.steppers.remove(i);
-                continue;
+                break;
             }
             self.steppers[i] = self.step(&self.steppers[i]);
             if self.steppers[i].x == self.player.x && self.steppers[i].y == self.player.y {
                 self.alive = false;
-                self.steppers.remove(i);
+                break;
             }
+            for j in 0..self.steppers.len() {
+                if j == i { continue; };
+                if self.steppers[i].x == self.steppers[j].x && self.steppers[i].y == self.steppers[j].y {
+                    removals.push(i);
+                    removals.push(j);
+                }
+            }
+        }
+        removals.sort();
+        removals.dedup();
+        for i in 0..removals.len() {
+            self.steppers.remove(removals[i] - i);
         }
     }
 
